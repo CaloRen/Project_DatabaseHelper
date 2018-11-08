@@ -1,4 +1,4 @@
-package com.example.ameya.project_expensemanager;
+package com.example.a300288675.project;
 
 import android.content.ContentValues;
 import android.content.Context;
@@ -64,56 +64,59 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         //CREATION OF User TABLE
         query = "CREATE TABLE " + TABLE_USER +
                 "(" + TABLE_USER_COL1 + " VARCHAR(25) PRIMARY KEY, " +
-                    TABLE_USER_COL2 + " VARCHAR(25), " +
-                    TABLE_USER_COL3 + " VARCHAR(25), " +
-                    TABLE_USER_COL4 + " VARCHAR(25), " +
-                    TABLE_USER_COL5 + " VARCHAR(25), " +
-                    TABLE_USER_COL6 + " VARCHAR(25), " +
-                    TABLE_USER_COL7 + " VARCHAR(25) " +
+                TABLE_USER_COL2 + " VARCHAR(25), " +
+                TABLE_USER_COL3 + " VARCHAR(25), " +
+                TABLE_USER_COL4 + " VARCHAR(25), " +
+                TABLE_USER_COL5 + " VARCHAR(25), " +
+                TABLE_USER_COL6 + " VARCHAR(25), " +
+                TABLE_USER_COL7 + " VARCHAR(25) " +
                 ");";
         db.execSQL(query);
 
         //CREATION OF MonthlyIncomeTracking TABLE
+        //SQLite does not allow multiple primary key columns
         query = "CREATE TABLE " + TABLE_MONTHLY_INCOME_TRACKING +
                 "(" + TABLE_MONTHLY_INCOME_TRACKING_COL1 + " VARCHAR(25) PRIMARY KEY, " +
-                    TABLE_MONTHLY_INCOME_TRACKING_COL2 + " DATE PRIMARY KEY, " +
-                    TABLE_MONTHLY_INCOME_TRACKING_COL3 + " DECIMAL(8,2)" +
+                TABLE_MONTHLY_INCOME_TRACKING_COL2 + " DATE , " +
+                TABLE_MONTHLY_INCOME_TRACKING_COL3 + " DECIMAL(8,2)" +
                 ");";
         db.execSQL(query);
 
         //CREATION OF ExpenseCategory TABLE
         query = "CREATE TABLE " + TABLE_EXPENSE_CATEGORY +
                 "(" + TABLE_EXPENSE_CATEGORY_COL1 + " INTEGER PRIMARY KEY AUTOINCREMENT, " +
-                    TABLE_EXPENSE_CATEGORY_COL2 + " VARCHAR(25) " +
+                TABLE_EXPENSE_CATEGORY_COL2 + " VARCHAR(25) " +
                 ");";
         db.execSQL(query);
 
         //CREATION OF DailySaving TABLE
+        //SQLite does not allow multiple primary key columns
         query = "CREATE TABLE " + TABLE_DAILY_SAVING +
                 "(" + TABLE_DAILY_SAVING_COL1 + " VARCHAR(25), " +
-                    TABLE_DAILY_SAVING_COL2 + " DATE PRIMARY KEY, " +
-                    TABLE_DAILY_SAVING_COL3 + " DECIMAL(8,2) " +
+                TABLE_DAILY_SAVING_COL2 + " DATE PRIMARY KEY, " +
+                TABLE_DAILY_SAVING_COL3 + " DECIMAL(8,2) " +
                 ");";
         db.execSQL(query);
 
         //CREATION OF EventwiseSaving TABLE
+        //SQLite does not allow multiple primary key columns
         query = "CREATE TABLE " + TABLE_EVENTWISE_SAVING +
                 "(" + TABLE_EVENTWISE_SAVING_COL1 + " VARCHAR(25) PRIMARY KEY, " +
-                    TABLE_EVENTWISE_SAVING_COL2 + " VARCHAR(25) PRIMARY KEY, " +
-                    TABLE_EVENTWISE_SAVING_COL3 + " TEXT, " +
-                    TABLE_EVENTWISE_SAVING_COL4 + " DECIMAL(8,2), " +
-                    TABLE_EVENTWISE_SAVING_COL5 + " DECIMAL(8,2)" +
+                TABLE_EVENTWISE_SAVING_COL2 + " VARCHAR(25) , " +
+                TABLE_EVENTWISE_SAVING_COL3 + " TEXT, " +
+                TABLE_EVENTWISE_SAVING_COL4 + " DECIMAL(8,2), " +
+                TABLE_EVENTWISE_SAVING_COL5 + " DECIMAL(8,2)" +
                 ");";
         db.execSQL(query);
 
         //CREATION OF Transaction TABLE
         query = "CREATE TABLE " + TABLE_TRANSACTIONS +
                 "(" + TABLE_TRANSACTIONS_COL1 + " INTEGER PRIMARY KEY AUTOINCREMENT, " +
-                    TABLE_TRANSACTIONS_COL2 + " VARCHAR(25), " +
-                    TABLE_TRANSACTIONS_COL3 + " INTEGER, " +
-                    TABLE_TRANSACTIONS_COL4 + " DATETIME, " +
-                    TABLE_TRANSACTIONS_COL5 + " DECIMAL(8,2), " +
-                    TABLE_TRANSACTIONS_COL6 + " TEXT " +
+                TABLE_TRANSACTIONS_COL2 + " VARCHAR(25), " +
+                TABLE_TRANSACTIONS_COL3 + " INTEGER, " +
+                TABLE_TRANSACTIONS_COL4 + " DATETIME, " +
+                TABLE_TRANSACTIONS_COL5 + " DECIMAL(8,2), " +
+                TABLE_TRANSACTIONS_COL6 + " TEXT " +
                 ");";
         db.execSQL(query);
     }
@@ -222,11 +225,11 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         String query="";
         query = "UPDATE " + TABLE_USER +
                 " SET " + TABLE_USER_COL2 + "='" + fName + "'" +
-                    "," + TABLE_USER_COL3 + "='" + lName + "'" +
-                    "," + TABLE_USER_COL4 + "='" + email + "'" +
-                    "," + TABLE_USER_COL5 + "='" + phone + "'" +
-                    "," + TABLE_USER_COL6 + "='" + password + "'" +
-                    "," + TABLE_USER_COL7 + "='" + profilePic + "'" +
+                "," + TABLE_USER_COL3 + "='" + lName + "'" +
+                "," + TABLE_USER_COL4 + "='" + email + "'" +
+                "," + TABLE_USER_COL5 + "='" + phone + "'" +
+                "," + TABLE_USER_COL6 + "='" + password + "'" +
+                "," + TABLE_USER_COL7 + "='" + profilePic + "'" +
                 " WHERE " + TABLE_USER_COL1 + "='" + loginID + "'";
 
         db.execSQL(query);
@@ -305,7 +308,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     public boolean deleteEvent(String loginID, String eventName){
         SQLiteDatabase db = this.getWritableDatabase();
         db.execSQL("DELETE FROM " + TABLE_EVENTWISE_SAVING + " WHERE " + TABLE_EVENTWISE_SAVING_COL1 + "='" + loginID  + "'" +
-                                                                        " AND " + TABLE_EVENTWISE_SAVING_COL2 + "='" + eventName + "'");
+                " AND " + TABLE_EVENTWISE_SAVING_COL2 + "='" + eventName + "'");
         return true;
     }
 
@@ -356,10 +359,10 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         //returns the monthly income of user based on the month. returns -1 if no record found for that user for that month
         SQLiteDatabase db = this.getWritableDatabase();
         String query = "SELECT " + TABLE_MONTHLY_INCOME_TRACKING_COL3 + " FROM " + TABLE_MONTHLY_INCOME_TRACKING +
-                        " WHERE " + TABLE_MONTHLY_INCOME_TRACKING_COL1 + "='" + loginID + "' AND " +
-                                    TABLE_MONTHLY_INCOME_TRACKING_COL2 + "<='" + Date.valueOf(date) + "'" +
-                        " ORDER BY " + TABLE_MONTHLY_INCOME_TRACKING_COL2 + " DESC " +
-                        " LIMIT 1;";
+                " WHERE " + TABLE_MONTHLY_INCOME_TRACKING_COL1 + "='" + loginID + "' AND " +
+                TABLE_MONTHLY_INCOME_TRACKING_COL2 + "<='" + Date.valueOf(date) + "'" +
+                " ORDER BY " + TABLE_MONTHLY_INCOME_TRACKING_COL2 + " DESC " +
+                " LIMIT 1;";
         Cursor cursor = db.rawQuery(query,null);
         cursor.moveToFirst();
         if (!cursor.isAfterLast() && cursor.getCount() > 0)
@@ -388,7 +391,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         SQLiteDatabase db = this.getWritableDatabase();
         String query = "SELECT * FROM " + TABLE_TRANSACTIONS +
                 " WHERE " + TABLE_TRANSACTIONS_COL2 + "='" + loginID + "' AND " +
-                            TABLE_TRANSACTIONS_COL4 + "='" + Date.valueOf(date) + "'";
+                TABLE_TRANSACTIONS_COL4 + "='" + Date.valueOf(date) + "'";
         Cursor cursor = db.rawQuery(query,null);
         cursor.moveToFirst();
         if (!cursor.isAfterLast() && cursor.getCount() > 0)
@@ -416,8 +419,8 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         SQLiteDatabase db = this.getWritableDatabase();
         String query = "SELECT * FROM " + TABLE_TRANSACTIONS +
                 " WHERE " + TABLE_TRANSACTIONS_COL2 + "='" + loginID + "' AND " +
-                            "strftime('%m',datetime(" + TABLE_TRANSACTIONS_COL4 + ",'unixepoch'))=" + month + " AND " +
-                            TABLE_TRANSACTIONS_COL3 + "=" + eCategoryID;
+                "strftime('%m',datetime(" + TABLE_TRANSACTIONS_COL4 + ",'unixepoch'))=" + month + " AND " +
+                TABLE_TRANSACTIONS_COL3 + "=" + eCategoryID;
         Cursor cursor = db.rawQuery(query,null);
         cursor.moveToFirst();
         if (!cursor.isAfterLast() && cursor.getCount() > 0)
