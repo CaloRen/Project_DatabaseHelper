@@ -1,13 +1,15 @@
-package com.example.a300288675.project;
-
 import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
 import android.database.DatabaseErrorHandler;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
+import android.util.Log;
 
 import java.sql.Date;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
 
 public class DatabaseHelper extends SQLiteOpenHelper {
 
@@ -21,7 +23,6 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     final static String TABLE_USER_COL4 = "Email";
     final static String TABLE_USER_COL5 = "Phone";
     final static String TABLE_USER_COL6 = "Password";
-    final static String TABLE_USER_COL7 = "ProfilePic";
 
     final static String TABLE_MONTHLY_INCOME_TRACKING = "MonthlyIncomeTracking";
     final static String TABLE_MONTHLY_INCOME_TRACKING_COL1 = "LoginID";
@@ -68,8 +69,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 TABLE_USER_COL3 + " VARCHAR(25), " +
                 TABLE_USER_COL4 + " VARCHAR(25), " +
                 TABLE_USER_COL5 + " VARCHAR(25), " +
-                TABLE_USER_COL6 + " VARCHAR(25), " +
-                TABLE_USER_COL7 + " VARCHAR(25) " +
+                TABLE_USER_COL6 + " VARCHAR(25) " +
                 ");";
         db.execSQL(query);
 
@@ -133,7 +133,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     }
 
 
-    public boolean addUser(String loginID, String fName, String lName, String email, String phone, String password, String profilePic){
+    public boolean addUser(String loginID, String fName, String lName, String email, String phone, String password){
         SQLiteDatabase db = this.getWritableDatabase();
         ContentValues cv = new ContentValues();
         cv.put(TABLE_USER_COL1,loginID);
@@ -142,7 +142,6 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         cv.put(TABLE_USER_COL4,email);
         cv.put(TABLE_USER_COL5,phone);
         cv.put(TABLE_USER_COL6,password);
-        cv.put(TABLE_USER_COL7,profilePic);
         long r = db.insert(TABLE_USER,null, cv);
         if (r==-1)
             return false;
@@ -151,11 +150,17 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     }
 
 
-    public boolean addMonthlyIncomeTracking(String loginID, String startMonth, Double amount){
+    public boolean addMonthlyIncomeTracking(String loginID, int startMonth, int year, Double amount){
         SQLiteDatabase db = this.getWritableDatabase();
+
+        Calendar cal = Calendar.getInstance();
+        cal.set(year, startMonth-1, 01);
+        //Date date = (Date)cal.getTime();
+        SimpleDateFormat format1 = new SimpleDateFormat("yyyy-MM-dd");
+
         ContentValues cv = new ContentValues();
         cv.put(TABLE_MONTHLY_INCOME_TRACKING_COL1,loginID);
-        cv.put(TABLE_MONTHLY_INCOME_TRACKING_COL2,startMonth);
+        cv.put(TABLE_MONTHLY_INCOME_TRACKING_COL2,format1.format(cal.getTime()));
         cv.put(TABLE_MONTHLY_INCOME_TRACKING_COL3,amount);
         long r = db.insert(TABLE_MONTHLY_INCOME_TRACKING,null, cv);
         if (r==-1)
@@ -220,7 +225,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     }
 
 
-    public boolean updateUser(String loginID, String fName, String lName, String email, String phone, String password, String profilePic){
+    public boolean updateUser(String loginID, String fName, String lName, String email, String phone, String password){
         SQLiteDatabase db = this.getWritableDatabase();
         String query="";
         query = "UPDATE " + TABLE_USER +
@@ -229,7 +234,6 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 "," + TABLE_USER_COL4 + "='" + email + "'" +
                 "," + TABLE_USER_COL5 + "='" + phone + "'" +
                 "," + TABLE_USER_COL6 + "='" + password + "'" +
-                "," + TABLE_USER_COL7 + "='" + profilePic + "'" +
                 " WHERE " + TABLE_USER_COL1 + "='" + loginID + "'";
 
         db.execSQL(query);
@@ -355,18 +359,24 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     }
 
 
-    public double getMonthlyIncomeAmount(String loginID, String date){
+    public double getMonthlyIncomeAmount(String loginID, int month, int year){
         //returns the monthly income of user based on the month. returns -1 if no record found for that user for that month
         SQLiteDatabase db = this.getWritableDatabase();
+
+        Calendar cal = Calendar.getInstance();
+        cal.set(year, month-1, 01);         //StartMonth in MonthlyTracking table will always have day 1 of the respective month
+        SimpleDateFormat format1 = new SimpleDateFormat("yyyy-MM-dd");
+
         String query = "SELECT " + TABLE_MONTHLY_INCOME_TRACKING_COL3 + " FROM " + TABLE_MONTHLY_INCOME_TRACKING +
                 " WHERE " + TABLE_MONTHLY_INCOME_TRACKING_COL1 + "='" + loginID + "' AND " +
-                TABLE_MONTHLY_INCOME_TRACKING_COL2 + "<='" + Date.valueOf(date) + "'" +
+                TABLE_MONTHLY_INCOME_TRACKING_COL2 + "<= '" + format1.format(cal.getTime()) + "'" +
                 " ORDER BY " + TABLE_MONTHLY_INCOME_TRACKING_COL2 + " DESC " +
                 " LIMIT 1;";
+
         Cursor cursor = db.rawQuery(query,null);
         cursor.moveToFirst();
         if (!cursor.isAfterLast() && cursor.getCount() > 0)
-            return cursor.getDouble(1);
+            return cursor.getDouble(0);
         else
             return -1;
     }
@@ -400,12 +410,28 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             return null;
     }
 
-    public Cursor getSpendingForMonth(String loginID, int month){
+    public double getSumOfTransactionsForDay(String loginID, String date){
+        //returns all the transactions for a day
+        SQLiteDatabase db = this.getWritableDatabase();
+
+        String query = "SELECT SUM(" + TABLE_TRANSACTIONS_COL5 + ") FROM " + TABLE_TRANSACTIONS +
+                " WHERE " + TABLE_TRANSACTIONS_COL2 + "='" + loginID + "' AND " +
+                TABLE_TRANSACTIONS_COL4 + "='" + date + "'";
+        Cursor cursor = db.rawQuery(query,null);
+        cursor.moveToFirst();
+        if (!cursor.isAfterLast() && cursor.getCount() > 0)
+            return cursor.getDouble(0);
+        else
+            return 0;
+    }
+
+    public Cursor getTransactionsForMonth(String loginID, int month, int year){
         //returns all transactions(spendings) done in a month
         SQLiteDatabase db = this.getWritableDatabase();
         String query = "SELECT * FROM " + TABLE_TRANSACTIONS +
                 " WHERE " + TABLE_TRANSACTIONS_COL2 + "='" + loginID + "' AND " +
-                "strftime('%m',datetime(" + TABLE_TRANSACTIONS_COL4 + ",'unixepoch'))=" + month;
+                " strftime('%m',datetime(" + TABLE_TRANSACTIONS_COL4 + ",'unixepoch'))=" + month + " AND " +
+                " strftime('%Y',datetime(" + TABLE_TRANSACTIONS_COL4 + ",'unixepoch'))=" + year;
         Cursor cursor = db.rawQuery(query,null);
         cursor.moveToFirst();
         if (!cursor.isAfterLast() && cursor.getCount() > 0)
@@ -414,12 +440,13 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             return null;
     }
 
-    public Cursor getTransactionsForCategoryForMonth(String loginID, int month, int eCategoryID){
+    public Cursor getTransactionsForCategoryForMonth(String loginID, int month, int year, int eCategoryID){
         //returns transactions for a specific category for a given month
         SQLiteDatabase db = this.getWritableDatabase();
         String query = "SELECT * FROM " + TABLE_TRANSACTIONS +
                 " WHERE " + TABLE_TRANSACTIONS_COL2 + "='" + loginID + "' AND " +
-                "strftime('%m',datetime(" + TABLE_TRANSACTIONS_COL4 + ",'unixepoch'))=" + month + " AND " +
+                " strftime('%m',datetime(" + TABLE_TRANSACTIONS_COL4 + ",'unixepoch'))=" + month + " AND " +
+                " strftime('%Y',datetime(" + TABLE_TRANSACTIONS_COL4 + ",'unixepoch'))=" + year + " AND " +
                 TABLE_TRANSACTIONS_COL3 + "=" + eCategoryID;
         Cursor cursor = db.rawQuery(query,null);
         cursor.moveToFirst();
@@ -443,8 +470,34 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             return null;
     }
 
+    public double[] getSavingDebtForMonth(String loginID ,int month, int year){
+        // this function is for report 1
+        double[] dailyBalance = new double[30];
+        double allowedExpense = 0;
+        double expensesDone[] = new double[30];
 
+        SimpleDateFormat format1 =  new SimpleDateFormat("yyyy-MM-dd");
+        Calendar cal = Calendar.getInstance();
+
+        //get daily allowed expense for that month
+        allowedExpense = getMonthlyIncomeAmount(loginID,month,year)/30;
+
+        //get total expenses for each day in an array
+        for (int i=0; i<expensesDone.length; i++){
+            cal.set(year, month-1, i+1);
+            expensesDone[i] = getSumOfTransactionsForDay(loginID, format1.format(cal.getTime()));
+        }
+
+        //calculate daily savings/debt for the entire month
+        for (int i=0; i<dailyBalance.length; i++){
+            dailyBalance[i] = allowedExpense - expensesDone[i];
+        }
+
+        //return the daily savings/debt array
+        return dailyBalance;
+    }
 
 
 
 }
+
