@@ -1,14 +1,18 @@
+import android.annotation.TargetApi;
 import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
 import android.database.DatabaseErrorHandler;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
+import android.os.Build;
+import android.support.annotation.RequiresApi;
 import android.util.Log;
 
 import java.sql.Date;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
+import java.time.YearMonth;
 import java.util.Calendar;
 
 public class DatabaseHelper extends SQLiteOpenHelper {
@@ -346,6 +350,31 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     }
 
 
+    public String getUserFullName(String loginID){
+        //validates a user based on loginID and password. returns true if correct credentials are entered and false for wrong loginID or password
+        SQLiteDatabase db = this.getWritableDatabase();
+        String query = "SELECT " + TABLE_USER_COL2 + "||' '||" + TABLE_USER_COL3 + " FROM " + TABLE_USER + " WHERE " + TABLE_USER_COL1 + "='" + loginID + "'";
+        Cursor cursor = db.rawQuery(query,null);
+        cursor.moveToFirst();
+        if (!cursor.isAfterLast())
+            return cursor.getString(0);
+        else
+            return "";
+    }
+
+    public String getEmail(String loginID){
+        //validates a user based on loginID and password. returns true if correct credentials are entered and false for wrong loginID or password
+        SQLiteDatabase db = this.getWritableDatabase();
+        String query = "SELECT " + TABLE_USER_COL4 + " FROM " + TABLE_USER + " WHERE " + TABLE_USER_COL1 + "='" + loginID + "'";
+        Cursor cursor = db.rawQuery(query,null);
+        cursor.moveToFirst();
+        if (!cursor.isAfterLast())
+            return cursor.getString(0);
+        else
+            return "";
+    }
+
+
     public String getExpenseCategoryName(int eCategoryID){
         //returns the Name of the expense category based on the expense category id passed
         SQLiteDatabase db = this.getWritableDatabase();
@@ -365,11 +394,11 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
         Calendar cal = Calendar.getInstance();
         cal.set(year, month-1, 01);         //StartMonth in MonthlyTracking table will always have day 1 of the respective month
-        SimpleDateFormat format1 = new SimpleDateFormat("yyyy-MM-dd");
+        SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd");
 
         String query = "SELECT " + TABLE_MONTHLY_INCOME_TRACKING_COL3 + " FROM " + TABLE_MONTHLY_INCOME_TRACKING +
                 " WHERE " + TABLE_MONTHLY_INCOME_TRACKING_COL1 + "='" + loginID + "' AND " +
-                TABLE_MONTHLY_INCOME_TRACKING_COL2 + "<= '" + format1.format(cal.getTime()) + "'" +
+                TABLE_MONTHLY_INCOME_TRACKING_COL2 + "<= '" + simpleDateFormat.format(cal.getTime()) + "'" +
                 " ORDER BY " + TABLE_MONTHLY_INCOME_TRACKING_COL2 + " DESC " +
                 " LIMIT 1;";
 
@@ -456,6 +485,28 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             return null;
     }
 
+    public Cursor getCategorywiseTotalForMonth(String loginID, int month, int year){
+        //returns total for each category a each category for a given month
+        Calendar cal = Calendar.getInstance();
+        cal.set(year, month-1, 01);        //StartMonth in MonthlyTracking table will always have day 1 of the respective month
+        SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd");
+
+        SQLiteDatabase db = this.getWritableDatabase();
+        String query = "SELECT " + TABLE_EXPENSE_CATEGORY_COL2 + ",SUM(" + TABLE_TRANSACTIONS_COL5 + ") " +
+                " FROM " + TABLE_TRANSACTIONS + " LEFT JOIN " + TABLE_EXPENSE_CATEGORY + " ON " + TABLE_EXPENSE_CATEGORY + "." + TABLE_EXPENSE_CATEGORY_COL1 + " = " + TABLE_TRANSACTIONS + "." + TABLE_TRANSACTIONS_COL3 +
+                " WHERE " + TABLE_TRANSACTIONS_COL2 + "='" + loginID + "' AND " +
+                " strftime('%m',datetime(" + TABLE_TRANSACTIONS_COL4 + "))='" + month + "' AND " +
+                " strftime('%Y',datetime(" + TABLE_TRANSACTIONS_COL4 + "))='" + year + "' " +
+                " GROUP BY " + TABLE_TRANSACTIONS + "." + TABLE_TRANSACTIONS_COL3;
+        Cursor cursor = db.rawQuery(query,null);
+        Log.e("Priting query",""+query);
+        cursor.moveToFirst();
+        if (!cursor.isAfterLast() && cursor.getCount() > 0)
+            return cursor;
+        else
+            return null;
+    }
+
     public Cursor getAllTransactionsForCategory(String loginID, int eCategoryID){
         //returns all the transactions till date for a category
         SQLiteDatabase db = this.getWritableDatabase();
@@ -470,34 +521,69 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             return null;
     }
 
-    public double[] getSavingDebtForMonth(String loginID ,int month, int year){
-        // this function is for report 1
-        double[] dailyBalance = new double[30];
+    @TargetApi(Build.VERSION_CODES.O)
+    @RequiresApi(api = Build.VERSION_CODES.O)
+    public DailyExpenseReport getSavingDebtForMonth(String loginID , int month, int year){
+        //this function is for report 1
+        double[] dailyBalance = null;
         double allowedExpense = 0;
-        double expensesDone[] = new double[30];
+        String[] days = null;
+        double expensesDone[] = null;
+        YearMonth yearMonthObject = YearMonth.of(year, month);
+        int daysInMonth = yearMonthObject.lengthOfMonth();
 
-        SimpleDateFormat format1 =  new SimpleDateFormat("yyyy-MM-dd");
+        //get date formats and calendar instance
+        SimpleDateFormat simpleDateFormatWithYear =  new SimpleDateFormat("yyyy-MM-dd");
+        SimpleDateFormat simpleDateFormatWithoutYear = new SimpleDateFormat("dd-MMM");
         Calendar cal = Calendar.getInstance();
 
         //get daily allowed expense for that month
-        allowedExpense = getMonthlyIncomeAmount(loginID,month,year)/30;
+        allowedExpense = getMonthlyIncomeAmount(loginID,month,year);
 
-        //get total expenses for each day in an array
-        for (int i=0; i<expensesDone.length; i++){
-            cal.set(year, month-1, i+1);
-            expensesDone[i] = getSumOfTransactionsForDay(loginID, format1.format(cal.getTime()));
-        }
+        //generate report only if allowed expense is found (that is only when there is an entry for monthly expenses)
+        if (allowedExpense!=-1){
+            days = new String[daysInMonth];
+            dailyBalance = new double[daysInMonth];
+            expensesDone = new double[daysInMonth];
 
-        //calculate daily savings/debt for the entire month
-        for (int i=0; i<dailyBalance.length; i++){
-            dailyBalance[i] = allowedExpense - expensesDone[i];
+            allowedExpense = allowedExpense / daysInMonth;          //divide by number of days in the month
+
+            for (int i=0 ; i<expensesDone.length ; i++){
+                cal.set(year, month-1, i+1);
+
+                //get total expenses for each day in an array
+                expensesDone[i] = getSumOfTransactionsForDay(loginID, simpleDateFormatWithYear.format(cal.getTime()));
+
+                //collect the days in a separate array
+                days[i] = simpleDateFormatWithoutYear.format(cal.getTime());
+
+                //calculate daily savings/debt for the entire month
+                dailyBalance[i] = allowedExpense - expensesDone[i];
+            }
         }
 
         //return the daily savings/debt array
-        return dailyBalance;
+        return new DailyExpenseReport(dailyBalance,days);
     }
 
 
-
+    public CategorywiseSpendingReport getExpensesCategorywiseForMonth(String loginID , int month, int year){
+        //this function is for report 2
+        float[] amount = null;
+        String[] categories = null;
+        Cursor cursor = getCategorywiseTotalForMonth(loginID, month, year);
+        if(cursor != null){
+            amount = new float[10];
+            categories = new String[10];
+            cursor.moveToFirst();
+            int i=0;
+            while(!cursor.isAfterLast()){
+                categories[i] = cursor.getString(0);
+                amount[i] = cursor.getFloat(1);
+                i++;
+                cursor.moveToNext();
+            }
+        }
+        return new CategorywiseSpendingReport(amount,categories);
+    }
 }
-
